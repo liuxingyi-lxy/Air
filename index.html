@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>空运计费重计算器（尺寸+数量）</title>
+    <title>Tính Trọng Lượng Tính Cước Hàng Không</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -67,44 +67,44 @@
 </head>
 <body>
     <div class="card">
-        <h1>✈️ 空运计费重计算器</h1>
+        <h1>✈️ Tính Trọng Lượng Tính Cước</h1>
         <p class="tip">
-            每件写 <b>长 × 宽 × 高 × 数量</b>，多件用 <b>+</b>、<b>,</b>、<b>，</b>、分号、空格或换行分隔。<br>
-            支持 <b>100*80*60*2</b>、<b>100x80x60x2</b>、<b>100 80 60 2</b>、带 cm/m 单位。
+            Mỗi kiện nhập <b>Dài × Rộng × Cao × Số lượng</b>, nhiều kiện cách nhau bằng <b>+</b>, <b>,</b>, dấu cách hoặc xuống dòng.<br>
+            Hỗ trợ các định dạng: <b>100*80*60*2</b>, <b>100x80x60x2</b>, <b>100 80 60 2</b>, có đơn vị cm/m.
         </p>
 
-        <label>尺寸 + 数量</label>
-        <textarea id="dimsInput" placeholder="例如：
+        <label>Kích thước + Số lượng</label>
+        <textarea id="dimsInput" placeholder="Ví dụ:
 100*80*60*2 + 90*70*50*1
 1.2×0.8×0.6m×3
 100cm 80cm 60cm 5"></textarea>
 
-        <label>默认单位（文本里没写单位时使用）</label>
+        <label>Đơn vị mặc định (nếu không ghi đơn vị)</label>
         <select id="unitSelect">
-            <option value="cm">厘米（cm）</option>
-            <option value="m">米（m）</option>
-            <option value="mm">毫米（mm）</option>
-            <option value="in">英寸（in）</option>
+            <option value="cm">Centimet (cm)</option>
+            <option value="m">Mét (m)</option>
+            <option value="mm">Milimet (mm)</option>
+            <option value="in">Inch (in)</option>
         </select>
 
-        <label>实际总重量（kg，选填）</label>
-        <input type="number" id="actualWeight" placeholder="例如：50" step="0.1" min="0">
+        <label>Tổng trọng lượng thực tế (kg, không bắt buộc)</label>
+        <input type="number" id="actualWeight" placeholder="Ví dụ: 50" step="0.1" min="0">
 
-        <label>体积重除数</label>
+        <label>Hệ số chia thể tích</label>
         <select id="divisorSelect">
-            <option value="6000">6000（空运标准）</option>
-            <option value="5000">5000（部分快递）</option>
+            <option value="6000">6000 (Tiêu chuẩn hàng không)</option>
+            <option value="5000">5000 (Một số chuyển phát nhanh)</option>
         </select>
 
-        <button onclick="calculate()">计算</button>
+        <button onclick="calculate()">Tính toán</button>
 
         <div id="errorBox" class="error"></div>
 
         <div id="resultBox" class="result">
             <div id="boxList"></div>
-            <p>总体积重量：<span id="volWeight">-</span> kg</p>
-            <p>实际总重量：<span id="actWeight">-</span> kg</p>
-            <p>计费重量（取大者）：<span id="chargeWeight" class="highlight">-</span> kg</p>
+            <p>Tổng trọng lượng thể tích: <span id="volWeight">-</span> kg</p>
+            <p>Trọng lượng thực tế: <span id="actWeight">-</span> kg</p>
+            <p>Trọng lượng tính cước (lấy số lớn hơn): <span id="chargeWeight" class="highlight">-</span> kg</p>
             <p class="tip" id="hint"></p>
         </div>
     </div>
@@ -125,12 +125,11 @@
             resultBox.classList.remove('show');
 
             if (!text) {
-                errorBox.textContent = '请先粘贴尺寸。';
+                errorBox.textContent = 'Vui lòng nhập kích thước.';
                 return;
             }
 
-            // 1. 先按明确分隔符切段：+ , ， ; ； 换行
-            //    注意保护欧洲小数逗号 "1,2"
+            // Tách các kiện hàng bằng dấu + , hoặc xuống dòng
             let segments = text
                 .replace(/[，;；]/g, ',')
                 .replace(/\+/g, ',')
@@ -138,50 +137,43 @@
                 .map(s => s.trim())
                 .filter(s => s.length > 0);
 
-            // 2. 如果某段里用空格写了多件（如 "100 80 60 2 90 70 50 1"），
-            //    段内数字个数是 4 的倍数就按 4 个一组处理。
-            //    注意：空格也可能是 "100 80 60 2" 这种一件的写法，所以不强行按空格拆段，
-            //    而是统一"提取数字 + 每4个一组"。
-
             const boxes = [];
             const errors = [];
 
             segments.forEach((seg, idx) => {
-                // 提取数字 + 可选单位
-                const regex = /(\d+(?:[.,]\d+)?)\s*(cm|m|mm|in|厘米|米|毫米|英寸)?/gi;
+                // Trích xuất số và đơn vị (nếu có)
+                const regex = /(\d+(?:[.,]\d+)?)\s*(cm|m|mm|in|centimet|mét|milimet)?/gi;
                 const tokens = [];
                 let m;
                 while ((m = regex.exec(seg)) !== null) {
                     let num = parseFloat(m[1].replace(',', '.'));
                     let unit = (m[2] || '').toLowerCase();
-                    if (unit === '厘米') unit = 'cm';
-                    if (unit === '米') unit = 'm';
-                    if (unit === '毫米') unit = 'mm';
-                    if (unit === '英寸') unit = 'in';
+                    if (unit === 'centimet') unit = 'cm';
+                    if (unit === 'mét') unit = 'm';
+                    if (unit === 'milimet') unit = 'mm';
                     if (isNaN(num) || num <= 0) continue;
                     tokens.push({ num, unit: unit || null });
                 }
 
                 if (tokens.length === 0) {
-                    errors.push(`第 ${idx + 1} 段没有识别到有效数字：${seg}`);
+                    errors.push(`Đoạn ${idx + 1} không nhận diện được số hợp lệ: ${seg}`);
                     return;
                 }
                 if (tokens.length % 4 !== 0) {
-                    errors.push(`第 ${idx + 1} 段数字个数是 ${tokens.length}，不是 4 的倍数（长、宽、高、数量）：${seg}`);
+                    errors.push(`Đoạn ${idx + 1} có ${tokens.length} số, không phải bội số của 4 (Dài, Rộng, Cao, Số lượng): ${seg}`);
                     return;
                 }
 
-                // 每 4 个数字组成一件
+                // Gom 4 số thành 1 kiện
                 for (let i = 0; i < tokens.length; i += 4) {
                     const t = [tokens[i], tokens[i+1], tokens[i+2], tokens[i+3]];
                     const qty = t[3].num;
-                    // 数量必须是正整数
                     if (!Number.isInteger(qty) || qty <= 0) {
-                        errors.push(`第 ${idx + 1} 段的数量 "${t[3].num}" 不是正整数：${seg}`);
+                        errors.push(`Số lượng "${t[3].num}" ở đoạn ${idx + 1} không phải số nguyên dương: ${seg}`);
                         continue;
                     }
 
-                    // 前三个换算成厘米
+                    // Chuyển 3 kích thước về cm
                     const dimsCm = t.slice(0, 3).map(item => {
                         const u = item.unit || defaultUnit;
                         const factor = TO_CM[u] !== undefined ? TO_CM[u] : 1;
@@ -202,31 +194,30 @@
                 errorBox.innerHTML = errors.join('<br>');
             }
             if (boxes.length === 0) {
-                if (errors.length === 0) errorBox.textContent = '没有识别到有效的尺寸。';
+                if (errors.length === 0) errorBox.textContent = 'Không tìm thấy kích thước hợp lệ.';
                 return;
             }
 
-            // 3. 汇总
             const totalVolWeight = boxes.reduce((sum, b) => sum + b.volWeight, 0);
 
             const boxList = document.getElementById('boxList');
             boxList.innerHTML = boxes.map((b, i) => {
                 const dims = b.dimsCm.map(d => d.toFixed(1)).join(' × ');
-                return `<div class="box-item">第 ${i+1} 件：${dims} cm　×　数量 ${b.qty}　→　体积重 ${b.volWeight.toFixed(2)} kg</div>`;
+                return `<div class="box-item">Kiện ${i+1}: ${dims} cm　×　SL: ${b.qty}　→　Trọng lượng thể tích: ${b.volWeight.toFixed(2)} kg</div>`;
             }).join('');
 
             document.getElementById('volWeight').textContent = totalVolWeight.toFixed(2);
-            document.getElementById('actWeight').textContent = actual === null ? '未填写' : actual.toFixed(2);
+            document.getElementById('actWeight').textContent = actual === null ? 'Chưa nhập' : actual.toFixed(2);
 
             let chargeWeight, hint;
             if (actual === null) {
                 chargeWeight = totalVolWeight;
-                hint = '未填写实际重量，仅显示体积重量。';
+                hint = 'Chưa nhập trọng lượng thực tế, chỉ hiển thị trọng lượng thể tích.';
             } else {
                 chargeWeight = Math.max(actual, totalVolWeight);
-                if (totalVolWeight > actual) hint = '💡 泡货：体积重大于实重，按体积重计费。';
-                else if (actual > totalVolWeight) hint = '💡 重货：实重大于体积重，按实际重量计费。';
-                else hint = '💡 实重和体积重持平。';
+                if (totalVolWeight > actual) hint = '💡 Hàng cồng kềnh: Trọng lượng thể tích lớn hơn thực tế, tính cước theo thể tích.';
+                else if (actual > totalVolWeight) hint = '💡 Hàng nặng: Trọng lượng thực tế lớn hơn thể tích, tính cước theo thực tế.';
+                else hint = '💡 Trọng lượng thực tế và thể tích bằng nhau.';
             }
             document.getElementById('chargeWeight').textContent = chargeWeight.toFixed(2);
             document.getElementById('hint').textContent = hint;
